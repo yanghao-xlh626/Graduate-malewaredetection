@@ -59,6 +59,7 @@ class MalexByteplot(nn.Module):
             ResidualBlock(256, 128, stride=2),
             ResidualBlock(512, 128, stride=1),
             ResidualBlock(512, 256, stride=2),
+            ResidualBlock(1024, 256, stride=2),
         )
         self.avgpool = nn.AdaptiveAvgPool2d((3,3))
     def forward(self,x):
@@ -86,6 +87,7 @@ class MalexBigram(nn.Module):
             ResidualBlock(256, 128, stride=2),
             ResidualBlock(512, 128, stride=1),
             ResidualBlock(512, 256, stride=2),
+            ResidualBlock(1024, 256, stride=2),
         )
         self.avgpool = nn.AdaptiveAvgPool2d((1,1))
     def forward(self,x):
@@ -101,8 +103,9 @@ class MalexResnet(nn.Module):
         self.bigram = MalexBigram()
         self.byteplot = MalexByteplot()
         self.fc1 = nn.Linear(1024*10, 1024)
-        self.dropout = nn.Dropout(p=0.3)
-        self.fc2 =nn.Linear(1024,1)
+        self.dropout = nn.Dropout(p=0.5)
+        self.fc2 =nn.Linear(1024,32)
+        self.fc3 =nn.Linear(32,1)
 
 
     def forward(self,byte,bigram):
@@ -111,16 +114,33 @@ class MalexResnet(nn.Module):
         bigram = self.bigram(bigram)
         bigram_flat = bigram.view(bigram.size(0),-1)
         combined = torch.cat((byte_flat,bigram_flat),dim=1)
-        output = self.fc2(self.fc1(combined)).squeeze(-1)
+        output =self.fc3(self.fc2(self.fc1(combined))).squeeze(-1)
         return output
         
 
-# if __name__ == "__main__":
-    # x1 = torch.randn(2, 1, 256, 256)  # batch=2, channel=1, size=256*256
-    # x2 = torch.randn(2,1,256,256)
-    # block = MalexResnet()
-    # out = block(x1,x2)
-    # print("输出尺寸:", out.shape)
+if __name__ == "__main__":
+    
+    # input_tensor = torch.randn(4, 64, 32, 32)
+    # block = ResidualBlock(in_channel=64, mid_channel=32, stride=2)
+    # output = block(input_tensor)
+    # print("Input shape:", input_tensor.shape)
+    # print("Output shape:", output.shape)
+    
+    # input_tensor = torch.randn(4, 1, 256, 256)  # batch=2, channel=1, size=256*256``
+    # subnet = MalexBigram()
+    # output = subnet(input_tensor)
+    # print("Input shape:", input_tensor.shape)
+    # print("Output shape:", output.shape)  # 输出尺寸为[batch,1024,1,1]# 输出尺寸为[batch,1024,1,1]
+
+
+    
+    
+    
+    x1 = torch.randn(4, 1, 256, 256)  # batch=2, channel=1, size=256*256
+    x2 = torch.randn(4,1,256,256)
+    block = MalexResnet()
+    out = block(x1,x2)
+    print("输出尺寸:", out.shape)
     
 
 

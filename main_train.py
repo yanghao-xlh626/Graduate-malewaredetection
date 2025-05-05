@@ -42,12 +42,18 @@ def save_checkpoint(model, optimizer, animator, path,epoch):
     }, path)
     print(f"已保存检查点至路径:{path}")
 
-def load_checkpoint(model, optimizer, animator,path,device='cpu'):
+def load_checkpoint(model, optimizer, animator,path,new_learn_rate,device='cpu'):
     checkpoint = torch.load(path, map_location=device)
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     animator.load_state_dict(checkpoint['animator_state_dict'])  # 恢复图形数据
     epoch = checkpoint['epoch']  # 恢复训练的起始周期
+    for param_group in optimizer.param_groups:
+        if 'lr' in param_group:
+            param_group['lr'] = new_learn_rate
+            write_log(f"学习率已更新为:{new_learn_rate}\n",graph_path)
+        else:
+            write_log("学习率参数未找到\n",graph_path)  # 记录日志信息,说明学习率参数未找到
     return epoch
 
 def checkpoint_init(batch_size,max_epochs,learn_rate,graph_path):
@@ -62,6 +68,7 @@ def checkpoint_init(batch_size,max_epochs,learn_rate,graph_path):
 def write_log(content,log_folder):
     with open(os.path.join(log_folder,'log.txt'),'a',encoding='utf-8') as f:
         f.write(content)
+        print(content)
 def train_model(dataset, batch_size, learn_rate, max_epochs, num_workers, save_path,load_path,graph_path):
     total_size = dataset.__len__()
     train_size = int(0.8 * total_size)
@@ -74,7 +81,7 @@ def train_model(dataset, batch_size, learn_rate, max_epochs, num_workers, save_p
     model,optimizer,animator,device,criterion,epoch =checkpoint_init(batch_size,max_epochs,learn_rate,graph_path)
     early_stopping = EarlyStopping(patience=5, delta=0.001)
     try:
-        epoch = load_checkpoint(model, optimizer, animator, load_path, device=device)
+        epoch = load_checkpoint(model, optimizer, animator, load_path,learn_rate)
         print("检查点文件已导入")
         write_log(f"检查点文件已导入,epoch为{epoch}\n",graph_path)
     except :  # 处理文件未找到的情况,或者没有epoch的情况
@@ -176,7 +183,7 @@ if __name__ == "__main__":
     save_path = r'E:\malware\malex\checkpoint\Resnet_V4\checkpoint.pth'  # 保存模型的路
     train_model(dataset,batch_size,learn_rate,max_epochs,num_workers,save_path,load_path,graph_path)'''
 
-    # 将block的dropout从0.3调到0.5,并将block中的dropout放到第三个batchnorm后,精最高度到达0.8766.
+    '''# 将block的dropout从0.3调到0.5,并将block中的dropout放到第三个batchnorm后,精最高度到达0.8766.
     dataset = MalexDataset(is_train = True,transforms=transform2Tensor())
     batch_size = 16
     learn_rate = 0.001
@@ -185,4 +192,28 @@ if __name__ == "__main__":
     graph_path = r'E:\malware\malex\checkpoint\Resnet_V5'
     load_path = r'E:\malware\malex\checkpoint\Resnet_V5\checkpoint.pth'  # 加载模型的路径
     save_path = r'E:\malware\malex\checkpoint\Resnet_V5\checkpoint.pth'  # 保存模型的路
+    train_model(dataset,batch_size,learn_rate,max_epochs,num_workers,save_path,load_path,graph_path)'''
+
+
+    '''# 尝试增加层数,增加了两个block,并修改resnet的fc层为5120*1024,最高精度0.8669,最终精度0.8663
+    dataset = MalexDataset(is_train = True,transforms=transform2Tensor())
+    batch_size = 16
+    learn_rate = 0.001
+    max_epochs = 60
+    num_workers = 4
+    graph_path = r'E:\malware\malex\checkpoint\Resnet_V6'
+    load_path = r'E:\malware\malex\checkpoint\Resnet_V6\checkpoint.pth'  # 加载模型的路径
+    save_path = r'E:\malware\malex\checkpoint\Resnet_V6\checkpoint.pth'  # 保存模型的路
+    train_model(dataset,batch_size,learn_rate,max_epochs,num_workers,save_path,load_path,graph_path)'''
+
+
+    # 两个branch分别减少两个block,在合并后怎加一个全连接层,让他更加平滑.第一轮训练11个epoch精度到0.8751,改用学习率0.00001训练
+    dataset = MalexDataset(is_train = True,transforms=transform2Tensor())
+    batch_size = 16
+    learn_rate = 0.00001
+    max_epochs = 60
+    num_workers = 4
+    graph_path = r'E:\malware\malex\checkpoint\Resnet_V7'
+    load_path = r'E:\malware\malex\checkpoint\Resnet_V7\checkpoint.pth'  # 加载模型的路径
+    save_path = r'E:\malware\malex\checkpoint\Resnet_V7\checkpoint.pth'  # 保存模型的路
     train_model(dataset,batch_size,learn_rate,max_epochs,num_workers,save_path,load_path,graph_path)
